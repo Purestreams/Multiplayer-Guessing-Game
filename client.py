@@ -14,30 +14,46 @@ def start_client():
                 break
 
             command = input("% ")
-            client.sendall(command.encode())
+            client.send(command.encode())
 
         while True:
             incoming_message = client.recv(1024).decode()
-            print(incoming_message)
-            if "Please select a room (1-10)" in incoming_message:
+            if incoming_message != "ready":
+                print(incoming_message)
+            if "ready" in incoming_message:
                 while True:
-                    command = input("Enter room number or /list to see all rooms or /exit to leave: ")
-                    client.sendall(command.encode())
+                    command = input("% ")
+                    client.send(command.encode())
                     if command == "/exit":
                         print("Goodbye!")
                         return
                     elif command == "/list":
                         room_list = client.recv(1024).decode()
                         print(room_list)
-                    else:
+                    elif "/enter" in command:
                         break
+                    else:
+                        received_message = client.recv(1024).decode()
+                        print(received_message)
 
             if "3012" in incoming_message:
-                choice = input("Enter your choice (true/false): ")
-                client.sendall(choice.encode())
+                choice = input("% ")
+                client.send(choice.encode())
                 result = client.recv(1024).decode()
                 print(result)
-                break
+                while True:
+                    command = input("% ")
+                    if "/exit" in command:
+                        client.send(command.encode())
+                        received_message = client.recv(1024).decode()
+                        print(received_message)
+                        if "4001" in received_message:
+                            print("Client ends")
+                            return
+                    else:
+                        client.send(command.encode())
+                        received_message = client.recv(1024).decode()
+                        print(received_message)
 
 if __name__ == "__main__":
     start_client()
