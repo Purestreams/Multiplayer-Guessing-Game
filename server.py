@@ -2,15 +2,31 @@ import socket
 import threading
 import random
 import time
+import sys
+
+# Check if the correct number of arguments is provided
+if len(sys.argv) != 3:
+    print("Usage: python server.py <port> <path/to/UserInfo.txt>")
+    exit(1)
 
 # Server settings
 HOST = '127.0.0.1'
-PORT = 65432
+PORT = int(sys.argv[1])
 
 clients = {i: [] for i in range(1, 11)}
 choices = {i: {} for i in range(1, 11)}
 
-users = {"user1": "password1", "user2": "password2"}
+def load_user_credentials(filename):
+    users = {}
+    with open(filename, 'r') as file:
+        for line in file:
+            username = line.split(':')[0]
+            password = line.split(':')[1].strip()
+            users[username] = password
+    return users
+
+# Sample user database
+users = load_user_credentials(sys.argv[2])
 
 # Create a lock object
 lock = threading.Lock()
@@ -27,6 +43,7 @@ def handle_client(conn, addr):
             break
         else:
             conn.send(b"1002 Authentication failed")
+            time.sleep(0.02)
 
     # Wait for 50ms to prevent message from being sent too fast and leading to an error
     time.sleep(0.05)
@@ -34,13 +51,11 @@ def handle_client(conn, addr):
     send_ready = True
 
     while True:
-        #Please select a room (1-10) or type /list to see all rooms or /exit to leave"
         if send_ready:
             conn.send(b"ready")
             time.sleep(0.05)
             send_ready = False
 
-        
         message = conn.recv(1024).decode().strip()
 
         if message == "/exit":
@@ -50,13 +65,12 @@ def handle_client(conn, addr):
         elif message == "/list":
             with lock:
                 no_of_players_in_room = [len(clients[i]) for i in range(1, 11)]
-                room_list = "3001 " + " ".join(map(str, no_of_players_in_room))
+                room_list = "3001 10 " + " ".join(map(str, no_of_players_in_room))
             conn.send(room_list.encode())
             time.sleep(0.05)
             continue
         elif "/enter" in message:
             try:
-                #/enter n
                 room = int(message.split(" ")[1])
                 if room not in range(1, 11):
                     conn.send(b"Invalid room number\n")
@@ -79,7 +93,6 @@ def handle_client(conn, addr):
                 else:
                     conn.send(b"3011 Wait")
 
-            # Expect client to send "true" or "false"
             input = conn.recv(1024).decode()
             choice = input.split(" ")[1].lower()
             with lock:
@@ -91,7 +104,6 @@ def handle_client(conn, addr):
                     conn.send(b"Invalid choice\n")
                     return
 
-            # If there are 2 choices, send random choice one client to be the winner
             with lock:
                 if len(choices[room]) == 2:
                     client_addrs = list(choices[room].keys())
@@ -110,7 +122,6 @@ def handle_client(conn, addr):
                     clients[room].clear()
             break
         else:
-            #4002 Unrecognized message
             conn.send(b"4002 Unrecognized message")
 
     while True:
@@ -134,4 +145,7 @@ def start_server():
             thread.start()
 
 if __name__ == "__main__":
+    if len(sys.argv) > 4 or len(sys.argv) < 3:
+        print("Usage: python server.py <port> <path/to/UserInfo.txt>")
+        exit(1)
     start_server()

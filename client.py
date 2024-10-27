@@ -1,19 +1,17 @@
 import socket
+import sys
 
-# Server settings
-HOST = '127.0.0.1'
-PORT = 65432
-
-def start_client():
+def start_client(host, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-        client.connect((HOST, PORT))
+        client.connect((host, port))
         while True:
             incoming_message = client.recv(1024).decode()
             print(incoming_message)
             if "1001 Authentication successful" in incoming_message:
                 break
-
-            command = input("% ")
+            elif "1002" in incoming_message:
+                continue
+            command = input("")
             client.send(command.encode())
 
         while True:
@@ -22,7 +20,7 @@ def start_client():
                 print(incoming_message)
             if "ready" in incoming_message:
                 while True:
-                    command = input("% ")
+                    command = input("")
                     client.send(command.encode())
                     if command == "/exit":
                         print("Goodbye!")
@@ -37,12 +35,12 @@ def start_client():
                         print(received_message)
 
             if "3012" in incoming_message:
-                choice = input("% ")
+                choice = input("")
                 client.send(choice.encode())
                 result = client.recv(1024).decode()
                 print(result)
                 while True:
-                    command = input("% ")
+                    command = input("")
                     if "/exit" in command:
                         client.send(command.encode())
                         received_message = client.recv(1024).decode()
@@ -56,4 +54,15 @@ def start_client():
                         print(received_message)
 
 if __name__ == "__main__":
-    start_client()
+    if len(sys.argv) != 3:
+        print("Usage: python client.py <server address> <server port>")
+        sys.exit(1)
+    
+    host = sys.argv[1]
+    try:
+        port = int(sys.argv[2])
+    except ValueError:
+        print("Port must be an integer.")
+        sys.exit(1)
+    
+    start_client(host, port)
